@@ -1,0 +1,17 @@
+[virtualenvs]
+# Create the virtualenv inside the project directory
+in-project = true
+
+# Don't create a virtualenv if one already exists
+create = true
+
+# Use the project name as the virtualenv name
+name = "ecfr-analyzer-env"
+
+[build]
+# Generate a setup.py file when building
+generate-setup-file = true
+
+[installer]
+# Don't install optional dependencies by default
+no-binary = false 
