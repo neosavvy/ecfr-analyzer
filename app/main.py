@@ -1,15 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks
+from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime
-import uuid
-import threading
-from concurrent.futures import ThreadPoolExecutor
-from threading import Lock
+
 import os
 import time
 from typing import List
-import requests
-from bs4 import BeautifulSoup
+
 
 from app.api.agencies import router as agencies_router
 from app.database import get_db, SessionLocal
@@ -19,6 +15,7 @@ from app.models.document_content import DocumentContent
 from app.services.ecfr_api import ECFRApiClient
 from app.services.xml_processor import XMLProcessor
 from app.models.agency_document_count import AgencyDocumentCount
+from app.models.metrics import AgencyRegulationDocumentHistoricalMetrics
 from app.utils.logging import configure_logging, get_logger, TRACE, DEBUG, INFO
 
 # Get the logger for this module
@@ -550,10 +547,10 @@ def get_and_store_document_content(descriptor, agency_id, db, ecfr_client):
                 )
                 db.add(content)
                 logger.trace(f"Added new document content to session")
-                return True
+                results_added += 1
             else:
                 logger.trace(f"Content already exists, skipping")
-                return False
+            return True
         else:
             logger.warning(f"Failed to retrieve XML content for descriptor {descriptor.id}")
             return False
@@ -574,3 +571,54 @@ def get_and_store_document_content(descriptor, agency_id, db, ecfr_client):
         return {
             "message": "No proxy manager available"
         }
+
+def compute_and_save_metrics(document_content, agency_id, document_id, db):
+    """
+    Compute metrics from document content and save them to the AgencyRegulationDocumentHistoricalMetrics table.
+    
+    Args:
+        document_content: The DocumentContent object
+        agency_id: The ID of the agency
+        document_id: The ID of the document
+        db: The database session
+    
+    Returns:
+        The created AgencyRegulationDocumentHistoricalMetrics object
+    """
+    logger = get_logger(__name__)
+    logger.info(f"Computing metrics for document {document_id}")
+    
+    # Get the processed text
+    processed_text = document_content.processed_text
+    
+    if not processed_text:
+        logger.warning(f"No processed text available for document {document_id}")
+        return None
+    
+    # Compute metrics using XMLProcessor
+    word_count = XMLProcessor.count_words(processed_text)
+    paragraph_count = XMLProcessor.count_paragraphs(processed_text)
+    sentence_count = XMLProcessor.count_sentences(processed_text)
+    
+    # Calculate average sentence length if possible
+    average_sentence_length = None
+    if sentence_count > 0:
+        average_sentence_length = word_count / sentence_count
+    
+    # Create metrics record
+    metrics = AgencyRegulationDocumentHistoricalMetrics(
+        agency_id=agency_id,
+        document_id=document_id,
+        metrics_date=document_content.version_date,
+        word_count=word_count,
+        paragraph_count=paragraph_count,
+        sentence_count=sentence_count,
+        average_sentence_length=average_sentence_length,
+        # Other fields are left as NULL for now
+    )
+    
+    # Add to database
+    db.add(metrics)
+    logger.info(f"Saved metrics for document {document_id}: {word_count} words, {paragraph_count} paragraphs, {sentence_count} sentences")
+    
+    return metrics
