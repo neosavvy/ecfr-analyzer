@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Optional, List, UUID
+from typing import Optional, List
 from pydantic import BaseModel, Field
 
 
@@ -23,8 +23,8 @@ class HistoricalMetricsBase(BaseModel):
 
 class HistoricalMetricsCreate(HistoricalMetricsBase):
     """Schema for creating historical metrics"""
-    agency_id: UUID
-    document_id: UUID
+    agency_id: int
+    document_id: int
 
 
 class HistoricalMetricsUpdate(BaseModel):
@@ -47,9 +47,9 @@ class HistoricalMetricsUpdate(BaseModel):
 
 class HistoricalMetrics(HistoricalMetricsBase):
     """Schema for reading historical metrics"""
-    id: UUID
-    agency_id: UUID
-    document_id: UUID
+    id: int
+    agency_id: int
+    document_id: int
 
     class Config:
         orm_mode = True

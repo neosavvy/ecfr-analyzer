@@ -15,6 +15,7 @@ class AgencyDocumentCount(Base):
     # Query information
     query_date = Column(Date, nullable=False, default=datetime.now().date)
     reference_date = Column(Date, nullable=False)  # The date used in the API call
+    target_year = Column(Integer, nullable=True)  # The target year used for filtering documents
     
     # Count and pagination
     total_count = Column(Integer, nullable=False)
@@ -31,7 +32,7 @@ class AgencyDocumentCount(Base):
         return f"<AgencyDocumentCount(agency_id='{self.agency_id}', total_count='{self.total_count}', current_page='{self.current_page}')>"
     
     @classmethod
-    def from_api_response(cls, agency_id, count_data, reference_date=None):
+    def from_api_response(cls, agency_id, count_data, reference_date=None, target_year=None):
         """Create an AgencyDocumentCount instance from API response data"""
         if reference_date is None:
             reference_date = datetime.now().date()
@@ -41,5 +42,6 @@ class AgencyDocumentCount(Base):
             reference_date=reference_date,
             total_count=count_data.get("meta", {}).get("total_count", 0),
             current_page=0,
-            is_complete=0
+            is_complete=0,
+            target_year=target_year
         ) 

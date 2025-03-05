@@ -5,7 +5,7 @@ import traceback
 import sys
 from fastapi.responses import JSONResponse
 
-from app.database.connection import get_db
+from app.database import get_db
 from app.models.agency import Agency
 from app.services.ecfr_api import ECFRApiClient
 from app.schemas.agency import AgencyResponse

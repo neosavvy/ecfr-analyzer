@@ -90,8 +90,17 @@ class ECFRApiClient:
             # Return an empty list to avoid errors
             return []
     
-    def search_agency_documents(self, agency_slug: str, page: int = 1, per_page: int = 20) -> Dict[str, Any]:
-        """Search for documents related to an agency"""
+    def search_agency_documents(self, agency_slug: str, page: int = 1, per_page: int = 20, last_modified_on_or_after: str = None, last_modified_before: str = None) -> Dict[str, Any]:
+        """
+        Search for documents related to an agency
+        
+        Args:
+            agency_slug: The slug of the agency
+            page: Page number to retrieve
+            per_page: Number of results per page
+            last_modified_on_or_after: Optional date string in YYYY-MM-DD format for filtering documents modified on or after this date
+            last_modified_before: Optional date string in YYYY-MM-DD format for filtering documents modified before this date
+        """
         self.logger.debug(f"Searching documents for agency '{agency_slug}' (page={page}, per_page={per_page})")
         url = f"{self.BASE_URL}/search/v1/results"
         params = {
@@ -101,6 +110,12 @@ class ECFRApiClient:
             "order": "relevance",
             "paginate_by": "results"
         }
+        
+        # Add date range parameters if provided
+        if last_modified_on_or_after:
+            params["last_modified_on_or_after"] = last_modified_on_or_after
+        if last_modified_before:
+            params["last_modified_before"] = last_modified_before
         
         # Retry logic for rate limiting
         max_retries = 3
@@ -220,13 +235,26 @@ class ECFRApiClient:
         
         return None  # Should not reach here, but just in case
     
-    def get_agency_document_count(self, agency_slug: str) -> Dict[str, Any]:
-        """Get the total count of documents for an agency"""
+    def get_agency_document_count(self, agency_slug: str, last_modified_on_or_after: str = None, last_modified_before: str = None) -> Dict[str, Any]:
+        """
+        Get the total count of documents for an agency
+        
+        Args:
+            agency_slug: The slug of the agency
+            last_modified_on_or_after: Optional date string in YYYY-MM-DD format for filtering documents modified on or after this date
+            last_modified_before: Optional date string in YYYY-MM-DD format for filtering documents modified before this date
+        """
         self.logger.debug(f"Fetching document count for agency '{agency_slug}'")
         url = f"{self.BASE_URL}/search/v1/count"
         params = {
             "agency_slugs[]": agency_slug
         }
+        
+        # Add date range parameters if provided
+        if last_modified_on_or_after:
+            params["last_modified_on_or_after"] = last_modified_on_or_after
+        if last_modified_before:
+            params["last_modified_before"] = last_modified_before
         
         self.logger.trace(f"Request URL: {url}, params: {params}")
         response = self._get_with_proxy(url, params=params)
