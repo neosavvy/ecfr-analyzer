@@ -16,6 +16,7 @@ from app.services.ecfr_api import ECFRApiClient
 from app.services.xml_processor import XMLProcessor
 from app.models.agency_document_count import AgencyDocumentCount
 from app.models.metrics import AgencyRegulationDocumentHistoricalMetrics
+from app.models.document import AgencyDocument
 from app.utils.logging import configure_logging, get_logger, TRACE, DEBUG, INFO
 
 # Get the logger for this module
@@ -291,6 +292,48 @@ async def get_agency_documents(
                                 processed_text=processed_text
                             )
                             db.add(content)
+                            db.flush()  # Flush to get the content ID
+                            
+                            # Create or get AgencyDocument record
+                            document_title = f"Title {descriptor.hierarchy['title']}"
+                            if descriptor.hierarchy.get('chapter'):
+                                document_title += f", Chapter {descriptor.hierarchy['chapter']}"
+                            if descriptor.hierarchy.get('part'):
+                                document_title += f", Part {descriptor.hierarchy['part']}"
+                            
+                            document_id_str = f"T{descriptor.hierarchy['title']}"
+                            if descriptor.hierarchy.get('chapter'):
+                                document_id_str += f"C{descriptor.hierarchy['chapter']}"
+                            if descriptor.hierarchy.get('part'):
+                                document_id_str += f"P{descriptor.hierarchy['part']}"
+                            
+                            # Check if document already exists
+                            existing_document = db.query(AgencyDocument).filter(
+                                AgencyDocument.document_id == document_id_str,
+                                AgencyDocument.agency_id == agency.id
+                            ).first()
+                            
+                            if not existing_document:
+                                # Create new document
+                                document = AgencyDocument(
+                                    title=document_title,
+                                    document_id=document_id_str,
+                                    agency_id=agency.id,
+                                    agency_metadata=descriptor.hierarchy,
+                                    created_at=datetime.now(),
+                                    updated_at=datetime.now()
+                                )
+                                db.add(document)
+                                db.flush()  # Flush to get the document ID
+                                logger.trace(f"Created new AgencyDocument with ID {document.id}")
+                            else:
+                                document = existing_document
+                                document.updated_at = datetime.now()
+                                logger.trace(f"Using existing AgencyDocument with ID {document.id}")
+                            
+                            # Compute and save metrics
+                            compute_xml_metrics(content, agency.id, db)
+                            
                             logger.trace(f"Added new document content to session")
                             results_added += 1
                         else:
@@ -546,6 +589,48 @@ def get_and_store_document_content(descriptor, agency_id, db, ecfr_client):
                     processed_text=processed_text
                 )
                 db.add(content)
+                db.flush()  # Flush to get the content ID
+                
+                # Create or get AgencyDocument record
+                document_title = f"Title {descriptor.hierarchy['title']}"
+                if descriptor.hierarchy.get('chapter'):
+                    document_title += f", Chapter {descriptor.hierarchy['chapter']}"
+                if descriptor.hierarchy.get('part'):
+                    document_title += f", Part {descriptor.hierarchy['part']}"
+                
+                document_id_str = f"T{descriptor.hierarchy['title']}"
+                if descriptor.hierarchy.get('chapter'):
+                    document_id_str += f"C{descriptor.hierarchy['chapter']}"
+                if descriptor.hierarchy.get('part'):
+                    document_id_str += f"P{descriptor.hierarchy['part']}"
+                
+                # Check if document already exists
+                existing_document = db.query(AgencyDocument).filter(
+                    AgencyDocument.document_id == document_id_str,
+                    AgencyDocument.agency_id == agency_id
+                ).first()
+                
+                if not existing_document:
+                    # Create new document
+                    document = AgencyDocument(
+                        title=document_title,
+                        document_id=document_id_str,
+                        agency_id=agency_id,
+                        agency_metadata=descriptor.hierarchy,
+                        created_at=datetime.now(),
+                        updated_at=datetime.now()
+                    )
+                    db.add(document)
+                    db.flush()  # Flush to get the document ID
+                    logger.trace(f"Created new AgencyDocument with ID {document.id}")
+                else:
+                    document = existing_document
+                    document.updated_at = datetime.now()
+                    logger.trace(f"Using existing AgencyDocument with ID {document.id}")
+                
+                # Compute and save metrics
+                compute_xml_metrics(content, agency_id, db)
+                
                 logger.trace(f"Added new document content to session")
                 results_added += 1
             else:
@@ -622,3 +707,69 @@ def compute_and_save_metrics(document_content, agency_id, document_id, db):
     logger.info(f"Saved metrics for document {document_id}: {word_count} words, {paragraph_count} paragraphs, {sentence_count} sentences")
     
     return metrics
+
+def compute_xml_metrics(document_content, agency_id, db):
+    """
+    Compute XML metrics for a document content and save them to the database.
+    
+    Args:
+        document_content: The DocumentContent object
+        agency_id: The ID of the agency
+        db: The database session
+        
+    Returns:
+        The created AgencyRegulationDocumentHistoricalMetrics object or None if metrics could not be computed
+    """
+    logger = get_logger(__name__)
+    
+    if not document_content or not document_content.processed_text:
+        logger.warning("Cannot compute metrics: document content is missing or has no processed text")
+        return None
+    
+    # Create or get AgencyDocument record
+    descriptor = db.query(AgencyTitleSearchDescriptor).filter(
+        AgencyTitleSearchDescriptor.id == document_content.descriptor_id
+    ).first()
+    
+    if not descriptor or not descriptor.hierarchy:
+        logger.warning(f"Cannot compute metrics: descriptor {document_content.descriptor_id} not found or has no hierarchy")
+        return None
+    
+    document_title = f"Title {descriptor.hierarchy['title']}"
+    if descriptor.hierarchy.get('chapter'):
+        document_title += f", Chapter {descriptor.hierarchy['chapter']}"
+    if descriptor.hierarchy.get('part'):
+        document_title += f", Part {descriptor.hierarchy['part']}"
+    
+    document_id_str = f"T{descriptor.hierarchy['title']}"
+    if descriptor.hierarchy.get('chapter'):
+        document_id_str += f"C{descriptor.hierarchy['chapter']}"
+    if descriptor.hierarchy.get('part'):
+        document_id_str += f"P{descriptor.hierarchy['part']}"
+    
+    # Check if document already exists
+    existing_document = db.query(AgencyDocument).filter(
+        AgencyDocument.document_id == document_id_str,
+        AgencyDocument.agency_id == agency_id
+    ).first()
+    
+    if not existing_document:
+        # Create new document
+        document = AgencyDocument(
+            title=document_title,
+            document_id=document_id_str,
+            agency_id=agency_id,
+            agency_metadata=descriptor.hierarchy,
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
+        db.add(document)
+        db.flush()  # Flush to get the document ID
+        logger.trace(f"Created new AgencyDocument with ID {document.id}")
+    else:
+        document = existing_document
+        document.updated_at = datetime.now()
+        logger.trace(f"Using existing AgencyDocument with ID {document.id}")
+    
+    # Compute and save metrics
+    return compute_and_save_metrics(document_content, agency_id, document.id, db)
