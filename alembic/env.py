@@ -1,19 +1,47 @@
+import os
+import sys
 from logging.config import fileConfig
+from pathlib import Path
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
 
+# Add the parent directory to sys.path to allow imports from the app package
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 # Import Base and all models to ensure they're registered with metadata
-from app.database.connection import DATABASE_URL
 from app.models.base import Base
-# Import all models explicitly to ensure they're registered
 from app.models.agency import Agency
+from app.models.search_descriptor import AgencyTitleSearchDescriptor
+from app.models.document_content import DocumentContent
+from app.models.agency_document_count import AgencyDocumentCount
+from app.models.document import AgencyDocument
+from app.models.metrics import AgencyRegulationDocumentHistoricalMetrics
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+
+# Get database connection details from environment variables
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME", "postgres")
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "password")
+
+# Construct the database URL
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
+
+# Add SSL mode for production environments
+if "supabase" in DB_HOST or os.getenv("ENV") == "production":
+    DATABASE_URL += "?sslmode=require"
+
+# Override sqlalchemy.url with the one from our app
 config.set_main_option('sqlalchemy.url', DATABASE_URL)
 
 # Interpret the config file for Python logging.
@@ -21,33 +49,11 @@ config.set_main_option('sqlalchemy.url', DATABASE_URL)
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Get the database URL from the environment
-import os
-from dotenv import load_dotenv
-from pathlib import Path
-
-# Get the project root directory
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Load environment variables from .env file
-load_dotenv(os.path.join(BASE_DIR, ".env"))
-
-# Override sqlalchemy.url with the one from environment if available
-db_url = os.getenv("DATABASE_URL")
-if db_url:
-    config.set_main_option("sqlalchemy.url", db_url)
-
 # Set target_metadata to the Base.metadata
 target_metadata = Base.metadata
 
 # Print registered tables for debugging
 print("Registered tables in metadata:", Base.metadata.tables.keys())
-
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
-
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -59,7 +65,6 @@ def run_migrations_offline() -> None:
 
     Calls to context.execute() here emit the given string to the
     script output.
-
     """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
@@ -78,7 +83,6 @@ def run_migrations_online() -> None:
 
     In this scenario we need to create an Engine
     and associate a connection with the context.
-
     """
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),

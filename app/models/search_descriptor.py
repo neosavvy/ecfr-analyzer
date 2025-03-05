@@ -3,7 +3,7 @@ from sqlalchemy import Column, String, Date, Float, Boolean, JSON, ForeignKey, I
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from .base import Base
+from app.models.base import Base
 
 class AgencyTitleSearchDescriptor(Base):
     __tablename__ = "agency_title_search_descriptors"
@@ -30,6 +30,9 @@ class AgencyTitleSearchDescriptor(Base):
     full_text_excerpt = Column(String, nullable=True)
     score = Column(Float, nullable=True)
     change_types = Column(JSON, default=list)
+    
+    # Processing status
+    processing_status = Column(Integer, default=0)  # 0=not processed, 1=processing, 2=completed, 3=error
     
     # Relationships
     agency = relationship("Agency", back_populates="search_descriptors")

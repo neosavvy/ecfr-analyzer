@@ -2,8 +2,9 @@ import uuid
 from sqlalchemy import Column, String, Date, Text, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+from datetime import datetime
 
-from .base import Base
+from app.models.base import Base
 
 class DocumentContent(Base):
     __tablename__ = "document_contents"
