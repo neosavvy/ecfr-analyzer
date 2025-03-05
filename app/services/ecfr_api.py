@@ -5,7 +5,6 @@ import re
 from app.utils.logging import get_logger
 import time
 import random
-from app.services.proxy_manager import ProxyManager
 import os
 
 class ECFRApiClient:
@@ -21,46 +20,18 @@ class ECFRApiClient:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         })
         
-        self.use_proxies = use_proxies
-        self.proxy_manager = None
         
-        if use_proxies:
-            self.proxy_manager = ProxyManager(proxies)
-            
-            # Try to load saved proxies if none were provided
-            if not proxies and os.path.exists("proxies.txt"):
-                self.proxy_manager.load_proxies("proxies.txt")
-            
-            self.logger.info(f"Initialized ECFRApiClient with proxy support ({len(self.proxy_manager.working_proxies)} working proxies)")
-        else:
-            self.logger.debug("Initialized ECFRApiClient without proxy support")
-    
-    def _get_with_proxy(self, url: str, params: Dict = None, **kwargs) -> requests.Response:
-        """Make a GET request, optionally using a proxy"""
-        if not self.use_proxies or not self.proxy_manager:
-            return self.session.get(url, params=params, **kwargs)
         
-        # Try with proxy
-        proxy = self.proxy_manager.get_proxy()
-        if proxy:
-            self.logger.debug(f"Using proxy: {self.proxy_manager.mask_proxy(proxy)}")
-            proxies = {"http": proxy, "https": proxy}
-            try:
-                response = self.session.get(url, params=params, proxies=proxies, **kwargs)
-                return response
-            except Exception as e:
-                self.logger.warning(f"Request with proxy failed: {str(e)}")
-                self.proxy_manager.mark_proxy_failed(proxy)
+    def _get(self, url: str, params: Dict = None, **kwargs) -> requests.Response:
+        """Make a GET request"""
         
-        # Fall back to direct connection
-        self.logger.debug("No working proxy available, using direct connection")
         return self.session.get(url, params=params, **kwargs)
     
     def get_agencies(self) -> List[Dict[str, Any]]:
         """Get all agencies from the eCFR API"""
         self.logger.debug("Fetching agencies from eCFR API")
         url = f"{self.BASE_URL}/admin/v1/agencies.json"
-        response = self._get_with_proxy(url)
+        response = self._get(url)
         response.raise_for_status()  # Raise exception for HTTP errors
         
         # Debug the raw response
@@ -125,7 +96,7 @@ class ECFRApiClient:
         while retry_count <= max_retries:
             try:
                 self.logger.trace(f"Request URL: {url}, params: {params}, attempt: {retry_count+1}")
-                response = self._get_with_proxy(url, params=params)
+                response = self._get(url, params=params)
                 
                 # Handle rate limiting
                 if response.status_code == 429:
@@ -181,7 +152,7 @@ class ECFRApiClient:
         while retry_count <= max_retries:
             try:
                 self.logger.trace(f"Request URL: {url}, params: {params}, attempt: {retry_count+1}")
-                response = self._get_with_proxy(url, params=params)
+                response = self._get(url, params=params)
                 
                 # Handle rate limiting
                 if response.status_code == 429:
@@ -204,7 +175,7 @@ class ECFRApiClient:
                         # Retry with the most recent date
                         retry_url = f"{self.BASE_URL}/versioner/v1/full/{most_recent_date}/title-{title}.xml"
                         self.logger.trace(f"Retry URL: {retry_url}, params: {params}")
-                        retry_response = self._get_with_proxy(retry_url, params=params)
+                        retry_response = self._get(retry_url, params=params)
                         
                         # Handle rate limiting for the retry request
                         if retry_response.status_code == 429:
@@ -257,7 +228,7 @@ class ECFRApiClient:
             params["last_modified_before"] = last_modified_before
         
         self.logger.trace(f"Request URL: {url}, params: {params}")
-        response = self._get_with_proxy(url, params=params)
+        response = self._get(url, params=params)
         response.raise_for_status()
         
         data = response.json()
