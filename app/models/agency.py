@@ -15,6 +15,9 @@ class Agency(Base):
     children = Column(JSON, default=list)
     cfr_references = Column(JSON, default=list)
     
+    # Relationship with search descriptors
+    search_descriptors = relationship("AgencyTitleSearchDescriptor", back_populates="agency", cascade="all, delete-orphan")
+    
     # Relationship with documents (to be implemented later)
     # documents = relationship("Document", back_populates="agency")
     
