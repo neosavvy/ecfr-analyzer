@@ -26,11 +26,11 @@ class AgencyRegulationDocumentHistoricalMetrics(Base):
     section_count = Column(Integer, nullable=True)
     subpart_count = Column(Integer, nullable=True)
     
-    # Complexity metrics
-    language_complexity_score = Column(Float, nullable=True)
-    readability_score = Column(Float, nullable=True)  # e.g., Flesch-Kincaid
-    average_sentence_length = Column(Float, nullable=True)
-    average_word_length = Column(Float, nullable=True)
+    # Detailed readability metrics
+    combined_readability_score = Column(Float, nullable=True, comment="Combined weighted score from all readability metrics (0-100)")
+    flesch_reading_ease = Column(Float, nullable=True, comment="Flesch Reading Ease score (0-100)")
+    smog_index_score = Column(Float, nullable=True, comment="SMOG Index score normalized to 0-100")
+    automated_readability_score = Column(Float, nullable=True, comment="Automated Readability Index normalized to 0-100")
     
     # Author metrics
     total_authors = Column(Integer, nullable=True)  # Number of unique authors who have touched the document
@@ -38,9 +38,6 @@ class AgencyRegulationDocumentHistoricalMetrics(Base):
     
     # Additional metrics from system design
     simplicity_score = Column(Float, nullable=True)  # Overall understandability score
-    
-    # Raw text content for reference (optional, could be large)
-    content_snapshot = Column(Text, nullable=True)
     
     # Foreign keys
     agency_id = Column(Integer, ForeignKey("agencies.id"), nullable=False)
@@ -56,4 +53,4 @@ class AgencyRegulationDocumentHistoricalMetrics(Base):
     )
     
     def __repr__(self):
-        return f"<DocumentHistoricalMetrics(id={self.id}, document_id={self.document_id}, date={self.metrics_date})>" 
+        return f"<AgencyRegulationDocumentHistoricalMetrics(id='{self.id}', metrics_date='{self.metrics_date}')>" 

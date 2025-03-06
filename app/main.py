@@ -8,6 +8,8 @@ from typing import List
 
 
 from app.api.agencies import router as agencies_router
+from app.api.metrics import router as metrics_router
+from app.api.documents import router as documents_router
 from app.database import get_db, SessionLocal
 from app.models.agency import Agency
 from app.models.search_descriptor import AgencyTitleSearchDescriptor
@@ -33,6 +35,11 @@ else:
 
 app = FastAPI(title="eCFR Analyzer", description="API for analyzing the Electronic Code of Federal Regulations")
 logger.info("eCFR Analyzer API initialized")
+
+# Include routers
+app.include_router(agencies_router)
+app.include_router(metrics_router)
+app.include_router(documents_router)
 
 @app.get("/")
 async def root():
