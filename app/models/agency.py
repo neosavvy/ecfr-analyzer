@@ -1,22 +1,31 @@
-from sqlalchemy import Column, Integer, String, JSON, ForeignKey
+import uuid
+from sqlalchemy import Column, Integer, String, JSON, ForeignKey, Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from .base import Base
+from app.models.base import Base
 
 class Agency(Base):
     __tablename__ = "agencies"
     
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False)
     short_name = Column(String)
     display_name = Column(String)
     sortable_name = Column(String)
-    slug = Column(String, unique=True, nullable=False)
+    slug = Column(String, nullable=False, unique=True, index=True)
     children = Column(JSON, default=list)
     cfr_references = Column(JSON, default=list)
+    description = Column(Text, nullable=True)
+    
+    # Relationship with search descriptors
+    search_descriptors = relationship("AgencyTitleSearchDescriptor", back_populates="agency", cascade="all, delete-orphan")
     
     # Relationship with documents (to be implemented later)
-    # documents = relationship("Document", back_populates="agency")
+    documents = relationship("AgencyDocument", back_populates="agency", cascade="all, delete-orphan")
+    
+    # Relationship with historical metrics
+    historical_metrics = relationship("AgencyRegulationDocumentHistoricalMetrics", back_populates="agency", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Agency(name='{self.name}', short_name='{self.short_name}')>"

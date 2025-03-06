@@ -90,3 +90,9 @@ coverage.xml
 
 # Project specific
 # Add any project-specific files to ignore here 
+
+# CFR Bulk Data
+bulk/
+*.zip
+cfr_bulk_download_*.log 
+json_cfr/
