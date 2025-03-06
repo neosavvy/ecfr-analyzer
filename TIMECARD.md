@@ -24,8 +24,22 @@ Hours worked: 2:00
 
 (Left processing script running overnight)
 
+March 5, 2025
+Start time: 8:00 AM
+End time: 4:00 PM
 
-Total hours worked: 7:20
+Hours worked: 8:00 
+
+
+March 5, 2025
+Start time: 7:45 PM
+End time: 9:15 PM
+
+Hours worked: 1:30 
+
+Leaving download script to run over night
+
+Sum of hours: 16:50 
 
 
 

@@ -8,10 +8,11 @@
 
 # Configuration
 API_HOST="http://localhost:8000"
-PER_PAGE=20
+PER_PAGE=5
 RESET=false
 PROCESS_ALL=true
-DELAY_BETWEEN_REQUESTS=5  # Seconds to wait between requests to avoid overwhelming the server
+DELAY_BETWEEN_REQUESTS=0  # Seconds to wait between requests to avoid overwhelming the server
+TARGET_YEAR=""  # Default to no specific year
 
 # Resume functionality
 PROGRESS_FILE="agency_fetch_progress.txt"
@@ -30,9 +31,13 @@ while [[ $# -gt 0 ]]; do
       START_FROM="$2"
       shift 2
       ;;
+    --target-year)
+      TARGET_YEAR="$2"
+      shift 2
+      ;;
     *)
       echo "Unknown option: $1"
-      echo "Usage: $0 [--resume] [--start-from AGENCY_SLUG]"
+      echo "Usage: $0 [--resume] [--start-from AGENCY_SLUG] [--target-year YEAR]"
       exit 1
       ;;
   esac
@@ -41,7 +46,7 @@ done
 # Create a log file with timestamp
 LOG_FILE="agency_document_fetch_$(date +%Y%m%d_%H%M%S).log"
 echo "Starting document fetch for all agencies at $(date)" > $LOG_FILE
-echo "Configuration: PER_PAGE=$PER_PAGE, RESET=$RESET, PROCESS_ALL=$PROCESS_ALL" >> $LOG_FILE
+echo "Configuration: PER_PAGE=$PER_PAGE, RESET=$RESET, PROCESS_ALL=$PROCESS_ALL, TARGET_YEAR=$TARGET_YEAR" >> $LOG_FILE
 
 # Initialize or append to summary log
 if [ ! -f "$SUMMARY_LOG" ] || [ "$RESUME" = false -a -z "$START_FROM" ]; then
@@ -123,7 +128,13 @@ for SLUG in $AGENCY_SLUGS; do
     echo "$SLUG" > "$PROGRESS_FILE"
     
     # Generate and execute the curl command
-    CURL_CMD="curl -X 'GET' '$API_HOST/api/agencies/$SLUG/documents?per_page=$PER_PAGE&reset=$RESET&process_all=$PROCESS_ALL' -H 'accept: application/json'"
+    # Add target_year parameter if specified
+    TARGET_YEAR_PARAM=""
+    if [ ! -z "$TARGET_YEAR" ]; then
+        TARGET_YEAR_PARAM="&target_year=$TARGET_YEAR"
+    fi
+    
+    CURL_CMD="curl -X 'GET' '$API_HOST/api/agencies/$SLUG/documents?per_page=$PER_PAGE&reset=$RESET&process_all=$PROCESS_ALL$TARGET_YEAR_PARAM' -H 'accept: application/json'"
     
     echo "Executing: $CURL_CMD" >> $LOG_FILE
     
@@ -169,6 +180,9 @@ fi
 
 echo "Completed processing all agencies at $(date)" | tee -a $LOG_FILE
 echo "Processed $PROCESSED agencies out of $AGENCY_COUNT total" | tee -a $LOG_FILE
+if [ ! -z "$TARGET_YEAR" ]; then
+    echo "Target year: $TARGET_YEAR" | tee -a $LOG_FILE
+fi
 echo "See $LOG_FILE for detailed logs"
 echo "See $SUMMARY_LOG for a summary of all agency processing statuses"
 
@@ -177,6 +191,10 @@ echo ""
 echo "=== IMPORTANT ==="
 echo "If you need to resume this process later, run:"
 echo "./$(basename "$0") --resume"
+if [ ! -z "$TARGET_YEAR" ]; then
+    echo "To resume with the same target year, run:"
+    echo "./$(basename "$0") --resume --target-year $TARGET_YEAR"
+fi
 echo ""
 echo "To check which agency to resume from, look at the summary log:"
 echo "cat $SUMMARY_LOG | grep 'RESUME POINT'" 
