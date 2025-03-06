@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.database import get_db
 from app.crud import metrics as metrics_crud
 from app.schemas.metrics import (
     HistoricalMetrics,
