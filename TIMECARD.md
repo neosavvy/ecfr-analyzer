@@ -39,8 +39,15 @@ Hours worked: 1:30
 
 Leaving download script to run over night
 
-Sum of hours: 16:50 
+March 6, 2025
 
+Start time: 8:00 AM
+End time: 10:00 AM
+
+Start time: 2:00 PM
+End time: 4:00 PM
+
+Sum of hours: 20 hours 50 min
 
 
 
